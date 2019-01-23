@@ -24,6 +24,16 @@ const (
 	bboxFlag uint32 = 0x10000000 // BBOX flag
 )
 
+// Available types of geometry objects
+const (
+	PointType uint32 = 1 + iota
+	LineType
+	PolygonType
+	MultiPointType
+	MultiLineType
+	MultiPolygonType
+)
+
 // Point presents 2, 3 or 4 dimensions point
 type Point struct {
 	byteOrder  byte
