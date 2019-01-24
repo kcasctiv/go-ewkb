@@ -4,6 +4,9 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"encoding"
+	"encoding/binary"
+	"encoding/hex"
+	"errors"
 	"fmt"
 	"math"
 
@@ -36,11 +39,11 @@ const (
 
 // Point presents 2, 3 or 4 dimensions point
 type Point struct {
-	byteOrder  byte
-	wkbType    uint32
-	srid       int32
-	bbox       *bbox
-	x, y, z, m float64
+	byteOrder byte
+	wkbType   uint32
+	srid      int32
+	bbox      *bbox
+	point     geo.Point
 }
 
 func (p *Point) ByteOrder() byte { return p.byteOrder }
@@ -49,10 +52,10 @@ func (p *Point) HasZ() bool      { return (p.wkbType & zFlag) == zFlag }
 func (p *Point) HasM() bool      { return (p.wkbType & mFlag) == mFlag }
 func (p *Point) HasSRID() bool   { return (p.wkbType & sridFlag) == sridFlag }
 func (p *Point) HasBBOX() bool   { return (p.wkbType & bboxFlag) == bboxFlag }
-func (p *Point) X() float64      { return p.x }
-func (p *Point) Y() float64      { return p.y }
-func (p *Point) Z() float64      { return p.z }
-func (p *Point) M() float64      { return p.m }
+func (p *Point) X() float64      { return p.point.X() }
+func (p *Point) Y() float64      { return p.point.Y() }
+func (p *Point) Z() float64      { return p.point.Z() }
+func (p *Point) M() float64      { return p.point.M() }
 
 func (p *Point) String() string {
 	var s string
@@ -71,8 +74,21 @@ func (p *Point) String() string {
 }
 
 func (p *Point) Scan(src interface{}) error {
-	// TODO:
-	return nil
+	data, ok := src.([]byte)
+	if !ok {
+		h, ok := src.(string)
+		if !ok {
+			return errors.New("could not scan point")
+		}
+
+		var err error
+		data, err = hex.DecodeString(h)
+		if err != nil {
+			return fmt.Errorf("could not scan point: %v", err)
+		}
+	}
+
+	return p.UnmarshalBinary(data)
 }
 
 func (p *Point) Value() (driver.Value, error) {
@@ -382,4 +398,35 @@ type bbox struct {
 	ymin, ymax float64
 	zmin, zmax float64
 	mmin, mmax float64
+}
+
+func (p *Point) UnmarshalBinary(data []byte) error {
+	var byteOrder binary.ByteOrder
+	if data[0] == XDR {
+		byteOrder = binary.BigEndian
+	} else {
+		byteOrder = binary.LittleEndian
+	}
+
+	offset := 1
+	wkbType := byteOrder.Uint32(data[offset:])
+	if wkbType != PointType {
+		return errors.New("not expected geometry type")
+	}
+	p.byteOrder = data[0]
+	p.wkbType = wkbType
+	offset += 4
+
+	if (wkbType & sridFlag) == sridFlag {
+		p.srid = int32(byteOrder.Uint32(data[offset:]))
+		offset += 4
+	}
+
+	if (wkbType & bboxFlag) == bboxFlag {
+		// TODO:
+	}
+
+	var err error
+	p.point, _, err = getReadPointFunc(wkbType)(data[offset:], byteOrder)
+	return err
 }
