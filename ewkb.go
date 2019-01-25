@@ -76,13 +76,12 @@ func (p *Point) String() string {
 func (p *Point) Scan(src interface{}) error {
 	data, ok := src.([]byte)
 	if !ok {
-		h, ok := src.(string)
-		if !ok {
-			return errors.New("could not scan point")
-		}
+		return errors.New("could not scan point")
+	}
 
+	if data[0] == 48 {
 		var err error
-		data, err = hex.DecodeString(h)
+		data, err = hex.DecodeString(string(data))
 		if err != nil {
 			return fmt.Errorf("could not scan point: %v", err)
 		}
@@ -410,7 +409,7 @@ func (p *Point) UnmarshalBinary(data []byte) error {
 
 	offset := 1
 	wkbType := byteOrder.Uint32(data[offset:])
-	if wkbType != PointType {
+	if (wkbType & uint32(math.MaxUint16)) != PointType {
 		return errors.New("not expected geometry type")
 	}
 	p.byteOrder = data[0]
