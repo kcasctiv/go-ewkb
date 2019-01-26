@@ -2,40 +2,17 @@ package ewkb
 
 import (
 	"database/sql/driver"
-	"encoding/binary"
 	"errors"
 	"fmt"
-	"math"
 
 	"github.com/kcasctiv/go-ewkb/geo"
 )
 
 // Point presents 2, 3 or 4 dimensions point
 type Point struct {
-	byteOrder byte
-	wkbType   uint32
-	srid      int32
-	bbox      *bbox
-	point     geo.Point
+	header
+	point geo.Point
 }
-
-// ByteOrder returns byte order of geometry
-func (p *Point) ByteOrder() byte { return p.byteOrder }
-
-// Type returns type of geometry
-func (p *Point) Type() uint32 { return p.wkbType & uint32(math.MaxUint16) }
-
-// HasZ checks if geometry has Z dimension
-func (p *Point) HasZ() bool { return (p.wkbType & zFlag) == zFlag }
-
-// HasM checks if geometry has M dimension
-func (p *Point) HasM() bool { return (p.wkbType & mFlag) == mFlag }
-
-// HasSRID checks if geometry contains SRID
-func (p *Point) HasSRID() bool { return (p.wkbType & sridFlag) == sridFlag }
-
-// HasBBOX checks if geometry contains BBOX
-func (p *Point) HasBBOX() bool { return (p.wkbType & bboxFlag) == bboxFlag }
 
 // X returns value of X dimension
 func (p *Point) X() float64 { return p.point.X() }
@@ -78,33 +55,15 @@ func (p *Point) Value() (driver.Value, error) {
 
 // UnmarshalBinary implements encoding.BinaryUnmarshaler interface
 func (p *Point) UnmarshalBinary(data []byte) error {
-	var byteOrder binary.ByteOrder
-	if data[0] == XDR {
-		byteOrder = binary.BigEndian
-	} else {
-		byteOrder = binary.LittleEndian
-	}
-
-	offset := 1
-	wkbType := byteOrder.Uint32(data[offset:])
-	if (wkbType & uint32(math.MaxUint16)) != PointType {
+	h, byteOrder, offset := readHeader(data)
+	if h.Type() != PointType {
 		return errors.New("not expected geometry type")
 	}
-	p.byteOrder = data[0]
-	p.wkbType = wkbType
-	offset += 4
 
-	if (wkbType & sridFlag) == sridFlag {
-		p.srid = int32(byteOrder.Uint32(data[offset:]))
-		offset += 4
-	}
-
-	if (wkbType & bboxFlag) == bboxFlag {
-		// TODO:
-	}
+	p.header = h
 
 	var err error
-	p.point, _, err = getReadPointFunc(wkbType)(data[offset:], byteOrder)
+	p.point, _, err = getReadPointFunc(h.wkbType)(data[offset:], byteOrder)
 	return err
 }
 

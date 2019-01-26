@@ -3,25 +3,15 @@ package ewkb
 import (
 	"database/sql/driver"
 	"fmt"
-	"math"
 
 	"github.com/kcasctiv/go-ewkb/geo"
 )
 
 type MultiLineString struct {
-	byteOrder byte
-	wkbType   uint32
-	srid      int32
-	bbox      *bbox
-	ml        geo.MultiLine
+	header
+	ml geo.MultiLine
 }
 
-func (l *MultiLineString) ByteOrder() byte             { return l.byteOrder }
-func (l *MultiLineString) Type() uint32                { return l.wkbType & uint32(math.MaxUint16) }
-func (l *MultiLineString) HasZ() bool                  { return (l.wkbType & zFlag) == zFlag }
-func (l *MultiLineString) HasM() bool                  { return (l.wkbType & mFlag) == mFlag }
-func (l *MultiLineString) HasSRID() bool               { return (l.wkbType & sridFlag) == sridFlag }
-func (l *MultiLineString) HasBBOX() bool               { return (l.wkbType & bboxFlag) == bboxFlag }
 func (l *MultiLineString) Line(idx int) geo.MultiPoint { return l.ml.Line(idx) }
 func (l *MultiLineString) Len() int                    { return l.ml.Len() }
 

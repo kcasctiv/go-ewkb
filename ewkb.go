@@ -4,9 +4,11 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"encoding"
+	"encoding/binary"
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"math"
 )
 
 // Byte orders
@@ -72,6 +74,58 @@ type bbox struct {
 	ymin, ymax float64
 	zmin, zmax float64
 	mmin, mmax float64
+}
+
+type header struct {
+	byteOrder byte
+	wkbType   uint32
+	srid      int32
+	bbox      *bbox
+}
+
+// ByteOrder returns byte order of geometry
+func (h *header) ByteOrder() byte { return h.byteOrder }
+
+// Type returns type of geometry
+func (h *header) Type() uint32 { return h.wkbType & uint32(math.MaxUint16) }
+
+// HasZ checks if geometry has Z dimension
+func (h *header) HasZ() bool { return (h.wkbType & zFlag) == zFlag }
+
+// HasM checks if geometry has M dimension
+func (h *header) HasM() bool { return (h.wkbType & mFlag) == mFlag }
+
+// HasSRID checks if geometry contains SRID
+func (h *header) HasSRID() bool { return (h.wkbType & sridFlag) == sridFlag }
+
+// HasBBOX checks if geometry contains BBOX
+func (h *header) HasBBOX() bool { return (h.wkbType & bboxFlag) == bboxFlag }
+
+func readHeader(data []byte) (header, binary.ByteOrder, int) {
+	var byteOrder binary.ByteOrder
+	if data[0] == XDR {
+		byteOrder = binary.BigEndian
+	} else {
+		byteOrder = binary.LittleEndian
+	}
+
+	offset := 1
+	wkbType := byteOrder.Uint32(data[offset:])
+	var h header
+	h.byteOrder = data[0]
+	h.wkbType = wkbType
+	offset += 4
+
+	if (wkbType & sridFlag) == sridFlag {
+		h.srid = int32(byteOrder.Uint32(data[offset:]))
+		offset += 4
+	}
+
+	if (wkbType & bboxFlag) == bboxFlag {
+		// TODO:
+	}
+
+	return h, byteOrder, offset
 }
 
 func scanGeometry(src interface{}, unmarshaler encoding.BinaryUnmarshaler) error {

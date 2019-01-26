@@ -3,25 +3,15 @@ package ewkb
 import (
 	"database/sql/driver"
 	"fmt"
-	"math"
 
 	"github.com/kcasctiv/go-ewkb/geo"
 )
 
 type MultiPoint struct {
-	byteOrder byte
-	wkbType   uint32
-	srid      int32
-	bbox      *bbox
-	mp        geo.MultiPoint
+	header
+	mp geo.MultiPoint
 }
 
-func (p *MultiPoint) ByteOrder() byte         { return p.byteOrder }
-func (p *MultiPoint) Type() uint32            { return p.wkbType & uint32(math.MaxUint16) }
-func (p *MultiPoint) HasZ() bool              { return (p.wkbType & zFlag) == zFlag }
-func (p *MultiPoint) HasM() bool              { return (p.wkbType & mFlag) == mFlag }
-func (p *MultiPoint) HasSRID() bool           { return (p.wkbType & sridFlag) == sridFlag }
-func (p *MultiPoint) HasBBOX() bool           { return (p.wkbType & bboxFlag) == bboxFlag }
 func (p *MultiPoint) Point(idx int) geo.Point { return p.mp.Point(idx) }
 func (p *MultiPoint) Len() int                { return p.mp.Len() }
 

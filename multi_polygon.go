@@ -3,25 +3,15 @@ package ewkb
 import (
 	"database/sql/driver"
 	"fmt"
-	"math"
 
 	"github.com/kcasctiv/go-ewkb/geo"
 )
 
 type MultiPolygon struct {
-	byteOrder byte
-	wkbType   uint32
-	srid      int32
-	bbox      *bbox
-	mp        geo.MultiPolygon
+	header
+	mp geo.MultiPolygon
 }
 
-func (p *MultiPolygon) ByteOrder() byte             { return p.byteOrder }
-func (p *MultiPolygon) Type() uint32                { return p.wkbType & uint32(math.MaxUint16) }
-func (p *MultiPolygon) HasZ() bool                  { return (p.wkbType & zFlag) == zFlag }
-func (p *MultiPolygon) HasM() bool                  { return (p.wkbType & mFlag) == mFlag }
-func (p *MultiPolygon) HasSRID() bool               { return (p.wkbType & sridFlag) == sridFlag }
-func (p *MultiPolygon) HasBBOX() bool               { return (p.wkbType & bboxFlag) == bboxFlag }
 func (p *MultiPolygon) Polygon(idx int) geo.Polygon { return p.mp.Polygon(idx) }
 func (p *MultiPolygon) Len() int                    { return p.mp.Len() }
 
