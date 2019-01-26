@@ -4,13 +4,9 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"encoding"
-	"encoding/binary"
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"math"
-
-	"github.com/kcasctiv/go-ewkb/geo"
 )
 
 // Byte orders
@@ -37,325 +33,19 @@ const (
 	MultiPolygonType
 )
 
-// Point presents 2, 3 or 4 dimensions point
-type Point struct {
-	byteOrder byte
-	wkbType   uint32
-	srid      int32
-	bbox      *bbox
-	point     geo.Point
-}
-
-func (p *Point) ByteOrder() byte { return p.byteOrder }
-func (p *Point) Type() uint32    { return p.wkbType & uint32(math.MaxUint16) }
-func (p *Point) HasZ() bool      { return (p.wkbType & zFlag) == zFlag }
-func (p *Point) HasM() bool      { return (p.wkbType & mFlag) == mFlag }
-func (p *Point) HasSRID() bool   { return (p.wkbType & sridFlag) == sridFlag }
-func (p *Point) HasBBOX() bool   { return (p.wkbType & bboxFlag) == bboxFlag }
-func (p *Point) X() float64      { return p.point.X() }
-func (p *Point) Y() float64      { return p.point.Y() }
-func (p *Point) Z() float64      { return p.point.Z() }
-func (p *Point) M() float64      { return p.point.M() }
-
-func (p *Point) String() string {
-	var s string
-	if p.HasSRID() {
-		s = fmt.Sprintf("SRID=%d;", p.srid)
-	}
-	s += "POINT "
-	if p.HasZ() {
-		s += "Z"
-	}
-	if p.HasM() {
-		s += "M"
-	}
-
-	return s + " (" + printPoint(p, p.HasZ(), p.HasM()) + ")"
-}
-
-func (p *Point) Scan(src interface{}) error {
-	data, ok := src.([]byte)
-	if !ok {
-		return errors.New("could not scan point")
-	}
-
-	if data[0] == 48 {
-		var err error
-		data, err = hex.DecodeString(string(data))
-		if err != nil {
-			return fmt.Errorf("could not scan point: %v", err)
-		}
-	}
-
-	return p.UnmarshalBinary(data)
-}
-
-func (p *Point) Value() (driver.Value, error) {
-	return p.String(), nil
-}
-
-func printPoint(p geo.Point, hasZ, hasM bool) string {
-	s := fmt.Sprintf("%f %f", p.X(), p.Y())
-	if hasZ {
-		s += fmt.Sprintf(" %f", p.Z())
-	}
-	if hasM {
-		s += fmt.Sprintf(" %f", p.M())
-	}
-
-	return s
-}
-
-type LineString struct {
-	byteOrder byte
-	wkbType   uint32
-	srid      int32
-	bbox      *bbox
-	mp        geo.MultiPoint
-}
-
-func (l *LineString) ByteOrder() byte         { return l.byteOrder }
-func (l *LineString) Type() uint32            { return l.wkbType & uint32(math.MaxUint16) }
-func (l *LineString) HasZ() bool              { return (l.wkbType & zFlag) == zFlag }
-func (l *LineString) HasM() bool              { return (l.wkbType & mFlag) == mFlag }
-func (l *LineString) HasSRID() bool           { return (l.wkbType & sridFlag) == sridFlag }
-func (l *LineString) HasBBOX() bool           { return (l.wkbType & bboxFlag) == bboxFlag }
-func (l *LineString) Point(idx int) geo.Point { return l.mp.Point(idx) }
-func (l *LineString) Len() int                { return l.mp.Len() }
-
-func (l *LineString) String() string {
-	var s string
-	if l.HasSRID() {
-		s = fmt.Sprintf("SRID=%d;", l.srid)
-	}
-	s += "LINESTRING "
-	if l.HasZ() {
-		s += "Z"
-	}
-	if l.HasM() {
-		s += "M"
-	}
-
-	return s + " " + printMultiPoint(l, l.HasZ(), l.HasM())
-}
-
-func (l *LineString) Scan(src interface{}) error {
-	// TODO:
-	return nil
-}
-
-func (l *LineString) Value() (driver.Value, error) {
-	return l.String(), nil
-}
-
-func printMultiPoint(p geo.MultiPoint, hasZ, hasM bool) string {
-	if p.Len() == 0 {
-		return "()"
-	}
-
-	var s string
-	for idx := 0; idx < p.Len(); idx++ {
-		s += printPoint(p.Point(idx), hasZ, hasM) + ", "
-	}
-
-	return "(" + s[:len(s)-2] + ")"
-}
-
-type Polygon struct {
-	byteOrder byte
-	wkbType   uint32
-	srid      int32
-	bbox      *bbox
-	poly      geo.Polygon
-}
-
-func (p *Polygon) ByteOrder() byte             { return p.byteOrder }
-func (p *Polygon) Type() uint32                { return p.wkbType & uint32(math.MaxUint16) }
-func (p *Polygon) HasZ() bool                  { return (p.wkbType & zFlag) == zFlag }
-func (p *Polygon) HasM() bool                  { return (p.wkbType & mFlag) == mFlag }
-func (p *Polygon) HasSRID() bool               { return (p.wkbType & sridFlag) == sridFlag }
-func (p *Polygon) HasBBOX() bool               { return (p.wkbType & bboxFlag) == bboxFlag }
-func (p *Polygon) Ring(idx int) geo.MultiPoint { return p.poly.Ring(idx) }
-func (p *Polygon) Len() int                    { return p.poly.Len() }
-
-func (p *Polygon) String() string {
-	var s string
-	if p.HasSRID() {
-		s = fmt.Sprintf("SRID=%d;", p.srid)
-	}
-	s += "POLYGON "
-	if p.HasZ() {
-		s += "Z"
-	}
-	if p.HasM() {
-		s += "M"
-	}
-
-	return s + " " + printPolygon(p, p.HasZ(), p.HasM())
-}
-
-func (p *Polygon) Scan(src interface{}) error {
-	// TODO:
-	return nil
-}
-
-func (p *Polygon) Value() (driver.Value, error) {
-	return p.String(), nil
-}
-
-func printPolygon(p geo.Polygon, hasZ, hasM bool) string {
-	if p.Len() == 0 {
-		return "()"
-	}
-
-	var s string
-	for idx := 0; idx < p.Len(); idx++ {
-		s += printMultiPoint(p.Ring(idx), hasZ, hasM) + ", "
-	}
-
-	return "(" + s[:len(s)-2] + ")"
-}
-
-type MultiPoint struct {
-	byteOrder byte
-	wkbType   uint32
-	srid      int32
-	bbox      *bbox
-	mp        geo.MultiPoint
-}
-
-func (p *MultiPoint) ByteOrder() byte         { return p.byteOrder }
-func (p *MultiPoint) Type() uint32            { return p.wkbType & uint32(math.MaxUint16) }
-func (p *MultiPoint) HasZ() bool              { return (p.wkbType & zFlag) == zFlag }
-func (p *MultiPoint) HasM() bool              { return (p.wkbType & mFlag) == mFlag }
-func (p *MultiPoint) HasSRID() bool           { return (p.wkbType & sridFlag) == sridFlag }
-func (p *MultiPoint) HasBBOX() bool           { return (p.wkbType & bboxFlag) == bboxFlag }
-func (p *MultiPoint) Point(idx int) geo.Point { return p.mp.Point(idx) }
-func (p *MultiPoint) Len() int                { return p.mp.Len() }
-
-func (p *MultiPoint) String() string {
-	var s string
-	if p.HasSRID() {
-		s = fmt.Sprintf("SRID=%d;", p.srid)
-	}
-	s += "MULTIPOINT "
-	if p.HasZ() {
-		s += "Z"
-	}
-	if p.HasM() {
-		s += "M"
-	}
-
-	return s + " " + printMultiPoint(p, p.HasZ(), p.HasM())
-}
-
-func (p *MultiPoint) Scan(src interface{}) error {
-	// TODO:
-	return nil
-}
-
-func (p *MultiPoint) Value() (driver.Value, error) {
-	return p.String(), nil
-}
-
-type MultiLineString struct {
-	byteOrder byte
-	wkbType   uint32
-	srid      int32
-	bbox      *bbox
-	ml        geo.MultiLine
-}
-
-func (l *MultiLineString) ByteOrder() byte             { return l.byteOrder }
-func (l *MultiLineString) Type() uint32                { return l.wkbType & uint32(math.MaxUint16) }
-func (l *MultiLineString) HasZ() bool                  { return (l.wkbType & zFlag) == zFlag }
-func (l *MultiLineString) HasM() bool                  { return (l.wkbType & mFlag) == mFlag }
-func (l *MultiLineString) HasSRID() bool               { return (l.wkbType & sridFlag) == sridFlag }
-func (l *MultiLineString) HasBBOX() bool               { return (l.wkbType & bboxFlag) == bboxFlag }
-func (l *MultiLineString) Line(idx int) geo.MultiPoint { return l.ml.Line(idx) }
-func (l *MultiLineString) Len() int                    { return l.ml.Len() }
-
-func (l *MultiLineString) String() string {
-	var s string
-	if l.HasSRID() {
-		s = fmt.Sprintf("SRID=%d;", l.srid)
-	}
-	s += "MULTILINESTRING "
-	if l.HasZ() {
-		s += "Z"
-	}
-	if l.HasM() {
-		s += "M"
-	}
-	s += " ("
-	if l.Len() > 0 {
-		for idx := 0; idx < l.Len(); idx++ {
-			s += printMultiPoint(l.Line(idx), l.HasZ(), l.HasM()) + ", "
-		}
-
-		s = s[:len(s)-2]
-	}
-
-	return s + ")"
-}
-
-func (l *MultiLineString) Scan(src interface{}) error {
-	// TODO:
-	return nil
-}
-
-func (l *MultiLineString) Value() (driver.Value, error) {
-	return l.String(), nil
-}
-
-type MultiPolygon struct {
-	byteOrder byte
-	wkbType   uint32
-	srid      int32
-	bbox      *bbox
-	mp        geo.MultiPolygon
-}
-
-func (p *MultiPolygon) ByteOrder() byte             { return p.byteOrder }
-func (p *MultiPolygon) Type() uint32                { return p.wkbType & uint32(math.MaxUint16) }
-func (p *MultiPolygon) HasZ() bool                  { return (p.wkbType & zFlag) == zFlag }
-func (p *MultiPolygon) HasM() bool                  { return (p.wkbType & mFlag) == mFlag }
-func (p *MultiPolygon) HasSRID() bool               { return (p.wkbType & sridFlag) == sridFlag }
-func (p *MultiPolygon) HasBBOX() bool               { return (p.wkbType & bboxFlag) == bboxFlag }
-func (p *MultiPolygon) Polygon(idx int) geo.Polygon { return p.mp.Polygon(idx) }
-func (p *MultiPolygon) Len() int                    { return p.mp.Len() }
-
-func (p *MultiPolygon) String() string {
-	var s string
-	if p.HasSRID() {
-		s = fmt.Sprintf("SRID=%d;", p.srid)
-	}
-	s += "MULTIPOLYGON "
-	if p.HasZ() {
-		s += "Z"
-	}
-	if p.HasM() {
-		s += "M"
-	}
-	s += " ("
-	if p.Len() > 0 {
-		for idx := 0; idx < p.Len(); idx++ {
-			s += printPolygon(p.Polygon(idx), p.HasZ(), p.HasM()) + ", "
-		}
-
-		s = s[:len(s)-2]
-	}
-
-	return s + ")"
-}
-
-func (p *MultiPolygon) Scan(src interface{}) error {
-	// TODO:
-	return nil
-}
-
-func (p *MultiPolygon) Value() (driver.Value, error) {
-	return p.String(), nil
+type Geometry interface {
+	ByteOrder() byte
+	Type() uint32
+	HasZ() bool
+	HasM() bool
+	HasSRID() bool
+	HasBBOX() bool
+	fmt.Stringer
+	sql.Scanner
+	driver.Valuer
+	// TODO: implement these interfaces
+	encoding.BinaryMarshaler
+	encoding.BinaryUnmarshaler
 }
 
 type Wrapper struct {
@@ -377,21 +67,6 @@ func (w *Wrapper) Scan(src interface{}) error {
 	return nil
 }
 
-type Geometry interface {
-	ByteOrder() byte
-	Type() uint32
-	HasZ() bool
-	HasM() bool
-	HasSRID() bool
-	HasBBOX() bool
-	fmt.Stringer
-	sql.Scanner
-	driver.Valuer
-	// TODO: implement these interfaces
-	encoding.BinaryMarshaler
-	encoding.BinaryUnmarshaler
-}
-
 type bbox struct {
 	xmin, xmax float64
 	ymin, ymax float64
@@ -399,33 +74,24 @@ type bbox struct {
 	mmin, mmax float64
 }
 
-func (p *Point) UnmarshalBinary(data []byte) error {
-	var byteOrder binary.ByteOrder
-	if data[0] == XDR {
-		byteOrder = binary.BigEndian
-	} else {
-		byteOrder = binary.LittleEndian
-	}
-
-	offset := 1
-	wkbType := byteOrder.Uint32(data[offset:])
-	if (wkbType & uint32(math.MaxUint16)) != PointType {
-		return errors.New("not expected geometry type")
-	}
-	p.byteOrder = data[0]
-	p.wkbType = wkbType
-	offset += 4
-
-	if (wkbType & sridFlag) == sridFlag {
-		p.srid = int32(byteOrder.Uint32(data[offset:]))
-		offset += 4
-	}
-
-	if (wkbType & bboxFlag) == bboxFlag {
-		// TODO:
-	}
-
+func scanGeometry(src interface{}, unmarshaler encoding.BinaryUnmarshaler) error {
+	var data []byte
 	var err error
-	p.point, _, err = getReadPointFunc(wkbType)(data[offset:], byteOrder)
-	return err
+	switch d := src.(type) {
+	case []byte:
+		if d[0] == 48 {
+			data, err = hex.DecodeString(string(d))
+		} else {
+			data = d
+		}
+	case string:
+		data, err = hex.DecodeString(d)
+	default:
+		return errors.New("could not scan geometry")
+	}
+	if err != nil {
+		return fmt.Errorf("could not scan geometry: %v", err)
+	}
+
+	return unmarshaler.UnmarshalBinary(data)
 }
