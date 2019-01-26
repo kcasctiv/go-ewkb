@@ -2,19 +2,25 @@ package ewkb
 
 import (
 	"database/sql/driver"
+	"errors"
 	"fmt"
 
 	"github.com/kcasctiv/go-ewkb/geo"
 )
 
+// MultiLineString presents MultiLineString geometry object
 type MultiLineString struct {
 	header
 	ml geo.MultiLine
 }
 
+// Line returns line with specified index
 func (l *MultiLineString) Line(idx int) geo.MultiPoint { return l.ml.Line(idx) }
-func (l *MultiLineString) Len() int                    { return l.ml.Len() }
 
+// Len returns count of lines
+func (l *MultiLineString) Len() int { return l.ml.Len() }
+
+// String returns WKT/EWKT geometry representation
 func (l *MultiLineString) String() string {
 	var s string
 	if l.HasSRID() {
@@ -39,11 +45,30 @@ func (l *MultiLineString) String() string {
 	return s + ")"
 }
 
+// Scan implements sql.Scanner interface
 func (l *MultiLineString) Scan(src interface{}) error {
-	// TODO:
-	return nil
+	return scanGeometry(src, l)
 }
 
+// Value implements sql driver.Valuer interface
 func (l *MultiLineString) Value() (driver.Value, error) {
 	return l.String(), nil
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler interface
+func (l *MultiLineString) UnmarshalBinary(data []byte) error {
+	h, byteOrder, offset := readHeader(data)
+	if h.Type() != MultiLineType {
+		return errors.New("not expected geometry type")
+	}
+
+	l.header = h
+
+	var err error
+	l.ml, _, err = readMultiLine(
+		data[offset:],
+		byteOrder,
+		getReadPointFunc(h.wkbType),
+	)
+	return err
 }
