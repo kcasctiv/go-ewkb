@@ -80,7 +80,7 @@ func (p polygon) Ring(idx int) MultiPoint { return p.rings[idx] }
 func (p polygon) Len() int                { return len(p.rings) }
 
 func NewPolygon(rings []MultiPoint) Polygon {
-	return &polygon{rings}
+	return polygon{rings}
 }
 
 type MultiLine interface {

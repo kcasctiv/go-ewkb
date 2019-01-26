@@ -2,19 +2,25 @@ package ewkb
 
 import (
 	"database/sql/driver"
+	"errors"
 	"fmt"
 
 	"github.com/kcasctiv/go-ewkb/geo"
 )
 
+// Polygon presents Polygon geometry object
 type Polygon struct {
 	header
 	poly geo.Polygon
 }
 
+// Ring returns ring with specified index
 func (p *Polygon) Ring(idx int) geo.MultiPoint { return p.poly.Ring(idx) }
-func (p *Polygon) Len() int                    { return p.poly.Len() }
 
+// Len returns count of rings
+func (p *Polygon) Len() int { return p.poly.Len() }
+
+// String returns WKT/EWKT geometry representation
 func (p *Polygon) String() string {
 	var s string
 	if p.HasSRID() {
@@ -31,13 +37,28 @@ func (p *Polygon) String() string {
 	return s + " " + printPolygon(p, p.HasZ(), p.HasM())
 }
 
+// Scan implements sql.Scanner interface
 func (p *Polygon) Scan(src interface{}) error {
-	// TODO:
-	return nil
+	return scanGeometry(src, p)
 }
 
+// Value implements sql driver.Valuer interface
 func (p *Polygon) Value() (driver.Value, error) {
 	return p.String(), nil
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler interface
+func (p *Polygon) UnmarshalBinary(data []byte) error {
+	h, byteOrder, offset := readHeader(data)
+	if h.Type() != PolygonType {
+		return errors.New("not expected geometry type")
+	}
+
+	p.header = h
+
+	var err error
+	p.poly, _, err = readPolygon(data[offset:], byteOrder, getReadPointFunc(h.wkbType))
+	return err
 }
 
 func printPolygon(p geo.Polygon, hasZ, hasM bool) string {
