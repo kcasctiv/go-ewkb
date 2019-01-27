@@ -33,6 +33,7 @@ const (
 	MultiPointType
 	MultiLineType
 	MultiPolygonType
+	CollectionType
 )
 
 type Geometry interface {
@@ -45,9 +46,9 @@ type Geometry interface {
 	fmt.Stringer
 	sql.Scanner
 	driver.Valuer
-	// TODO: implement these interfaces
-	encoding.BinaryMarshaler
 	encoding.BinaryUnmarshaler
+	// TODO: implement these interfaces
+	//encoding.BinaryMarshaler
 }
 
 type Wrapper struct {
