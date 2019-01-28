@@ -26,15 +26,12 @@ func (p *Polygon) String() string {
 	if p.HasSRID() {
 		s = fmt.Sprintf("SRID=%d;", p.srid)
 	}
-	s += "POLYGON "
-	if p.HasZ() {
-		s += "Z"
-	}
-	if p.HasM() {
+	s += "POLYGON"
+	if !p.HasZ() && p.HasM() {
 		s += "M"
 	}
 
-	return s + " " + printPolygon(p, p.HasZ(), p.HasM())
+	return s + printPolygon(p, p.HasZ(), p.HasM())
 }
 
 // Scan implements sql.Scanner interface
@@ -63,13 +60,13 @@ func (p *Polygon) UnmarshalBinary(data []byte) error {
 
 func printPolygon(p geo.Polygon, hasZ, hasM bool) string {
 	if p.Len() == 0 {
-		return "()"
+		return " EMPTY"
 	}
 
 	var s string
 	for idx := 0; idx < p.Len(); idx++ {
-		s += printMultiPoint(p.Ring(idx), hasZ, hasM) + ", "
+		s += printMultiPoint(p.Ring(idx), hasZ, hasM) + ","
 	}
 
-	return "(" + s[:len(s)-2] + ")"
+	return "(" + s[:len(s)-1] + ")"
 }

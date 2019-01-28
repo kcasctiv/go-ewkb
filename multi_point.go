@@ -26,15 +26,12 @@ func (p *MultiPoint) String() string {
 	if p.HasSRID() {
 		s = fmt.Sprintf("SRID=%d;", p.srid)
 	}
-	s += "MULTIPOINT "
-	if p.HasZ() {
-		s += "Z"
-	}
-	if p.HasM() {
+	s += "MULTIPOINT"
+	if !p.HasZ() && p.HasM() {
 		s += "M"
 	}
 
-	return s + " " + printMultiPoint(p, p.HasZ(), p.HasM())
+	return s + printMultiPoint(p, p.HasZ(), p.HasM())
 }
 
 // Scan implements sql.Scanner interface
@@ -63,13 +60,13 @@ func (p *MultiPoint) UnmarshalBinary(data []byte) error {
 
 func printMultiPoint(p geo.MultiPoint, hasZ, hasM bool) string {
 	if p.Len() == 0 {
-		return "()"
+		return " EMPTY"
 	}
 
 	var s string
 	for idx := 0; idx < p.Len(); idx++ {
-		s += printPoint(p.Point(idx), hasZ, hasM) + ", "
+		s += printPoint(p.Point(idx), hasZ, hasM) + ","
 	}
 
-	return "(" + s[:len(s)-2] + ")"
+	return "(" + s[:len(s)-1] + ")"
 }

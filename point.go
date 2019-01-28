@@ -4,6 +4,8 @@ import (
 	"database/sql/driver"
 	"errors"
 	"fmt"
+	"math"
+	"strconv"
 
 	"github.com/kcasctiv/go-ewkb/geo"
 )
@@ -32,15 +34,12 @@ func (p *Point) String() string {
 	if p.HasSRID() {
 		s = fmt.Sprintf("SRID=%d;", p.srid)
 	}
-	s += "POINT "
-	if p.HasZ() {
-		s += "Z"
-	}
-	if p.HasM() {
+	s += "POINT"
+	if !p.HasZ() && p.HasM() {
 		s += "M"
 	}
 
-	return s + " (" + printPoint(p, p.HasZ(), p.HasM()) + ")"
+	return s + "(" + printPoint(p, p.HasZ(), p.HasM()) + ")"
 }
 
 // Scan implements sql.Scanner interface
@@ -68,12 +67,19 @@ func (p *Point) UnmarshalBinary(data []byte) error {
 }
 
 func printPoint(p geo.Point, hasZ, hasM bool) string {
-	s := fmt.Sprintf("%f %f", p.X(), p.Y())
+	if math.IsNaN(p.X()) || math.IsNaN(p.Y()) ||
+		math.IsNaN(p.Z()) || math.IsNaN(p.M()) {
+		return " EMPTY"
+	}
+
+	s := strconv.FormatFloat(p.X(), 'f', -1, 64) +
+		" " +
+		strconv.FormatFloat(p.Y(), 'f', -1, 64)
 	if hasZ {
-		s += fmt.Sprintf(" %f", p.Z())
+		s += " " + strconv.FormatFloat(p.Z(), 'f', -1, 64)
 	}
 	if hasM {
-		s += fmt.Sprintf(" %f", p.M())
+		s += " " + strconv.FormatFloat(p.M(), 'f', -1, 64)
 	}
 
 	return s

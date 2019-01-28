@@ -26,15 +26,12 @@ func (l *LineString) String() string {
 	if l.HasSRID() {
 		s = fmt.Sprintf("SRID=%d;", l.srid)
 	}
-	s += "LINESTRING "
-	if l.HasZ() {
-		s += "Z"
-	}
-	if l.HasM() {
+	s += "LINESTRING"
+	if !l.HasZ() && l.HasM() {
 		s += "M"
 	}
 
-	return s + " " + printMultiPoint(l, l.HasZ(), l.HasM())
+	return s + printMultiPoint(l, l.HasZ(), l.HasM())
 }
 
 // Scan implements sql.Scanner interface

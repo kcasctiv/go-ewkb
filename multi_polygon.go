@@ -26,20 +26,23 @@ func (p *MultiPolygon) String() string {
 	if p.HasSRID() {
 		s = fmt.Sprintf("SRID=%d;", p.srid)
 	}
-	s += "MULTIPOLYGON "
-	if p.HasZ() {
-		s += "Z"
-	}
-	if p.HasM() {
+	s += "MULTIPOLYGON"
+	if !p.HasZ() && p.HasM() {
 		s += "M"
 	}
-	s += " ("
+
+	if p.Len() == 0 {
+		s += " EMPTY"
+		return s
+	}
+
+	s += "("
 	if p.Len() > 0 {
 		for idx := 0; idx < p.Len(); idx++ {
-			s += printPolygon(p.Polygon(idx), p.HasZ(), p.HasM()) + ", "
+			s += printPolygon(p.Polygon(idx), p.HasZ(), p.HasM()) + ","
 		}
 
-		s = s[:len(s)-2]
+		s = s[:len(s)-1]
 	}
 
 	return s + ")"

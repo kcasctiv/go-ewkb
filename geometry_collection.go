@@ -25,20 +25,17 @@ func (c *GeometryCollection) String() string {
 	if c.HasSRID() {
 		s = fmt.Sprintf("SRID=%d;", c.srid)
 	}
-	s += "GEOMETRYCOLLECTION "
-	if c.HasZ() {
-		s += "Z"
-	}
-	if c.HasM() {
+	s += "GEOMETRYCOLLECTION"
+	if !c.HasZ() && c.HasM() {
 		s += "M"
 	}
 
 	if c.Len() == 0 {
-		s += "EMPTY"
+		s += " EMPTY"
 		return s
 	}
 
-	s += " ("
+	s += "("
 	for idx := 0; idx < c.Len(); idx++ {
 		gs := c.Geometry(idx).String()
 		if c.Geometry(idx).HasSRID() {

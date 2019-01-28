@@ -26,20 +26,23 @@ func (l *MultiLineString) String() string {
 	if l.HasSRID() {
 		s = fmt.Sprintf("SRID=%d;", l.srid)
 	}
-	s += "MULTILINESTRING "
-	if l.HasZ() {
-		s += "Z"
-	}
-	if l.HasM() {
+	s += "MULTILINESTRING"
+	if !l.HasZ() && l.HasM() {
 		s += "M"
 	}
-	s += " ("
+
+	if l.Len() == 0 {
+		s += " EMPTY"
+		return s
+	}
+
+	s += "("
 	if l.Len() > 0 {
 		for idx := 0; idx < l.Len(); idx++ {
-			s += printMultiPoint(l.Line(idx), l.HasZ(), l.HasM()) + ", "
+			s += printMultiPoint(l.Line(idx), l.HasZ(), l.HasM()) + ","
 		}
 
-		s = s[:len(s)-2]
+		s = s[:len(s)-1]
 	}
 
 	return s + ")"
