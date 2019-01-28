@@ -36,12 +36,19 @@ const (
 	CollectionType
 )
 
+// Geometry presents interface of geometry object
 type Geometry interface {
+	// ByteOrder returns byte order of geometry
 	ByteOrder() byte
+	// Type returns type of geometry
 	Type() uint32
+	// HasZ checks if geometry has Z dimension
 	HasZ() bool
+	// HasM checks if geometry has M dimension
 	HasM() bool
+	// HasSRID checks if geometry contains SRID
 	HasSRID() bool
+	// HasBBOX checks if geometry contains BBOX
 	HasBBOX() bool
 	fmt.Stringer
 	sql.Scanner
@@ -51,23 +58,80 @@ type Geometry interface {
 	//encoding.BinaryMarshaler
 }
 
+// Wrapper prensents wrapper for geometry objects.
+// Can be used for reading from and writing to DB
+// all types of geometry, supported by package.
+// Also support null values and may be useful
+// for nullable columns
 type Wrapper struct {
-	geom Geometry
+	Geometry Geometry
 }
 
-func (w *Wrapper) ByteOrder() byte              { return w.geom.ByteOrder() }
-func (w *Wrapper) Type() uint32                 { return w.geom.Type() }
-func (w *Wrapper) HasZ() bool                   { return w.geom.HasZ() }
-func (w *Wrapper) HasM() bool                   { return w.geom.HasM() }
-func (w *Wrapper) HasSRID() bool                { return w.geom.HasSRID() }
-func (w *Wrapper) HasBBOX() bool                { return w.geom.HasBBOX() }
-func (w *Wrapper) String() string               { return w.geom.String() }
-func (w *Wrapper) Value() (driver.Value, error) { return w.geom.Value() }
-func (w *Wrapper) Geometry() Geometry           { return w.geom }
-
+// Scan implements sql.Scanner interface
 func (w *Wrapper) Scan(src interface{}) error {
-	// TODO:
-	return nil
+	if src == nil {
+		w.Geometry = nil
+		return nil
+	}
+
+	return scanGeometry(src, w)
+}
+
+// Value implements sql driver.Valuer interface
+func (w *Wrapper) Value() (driver.Value, error) {
+	if w.Geometry == nil {
+		return nil, nil
+	}
+
+	return w.Geometry.Value()
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler interface
+func (w *Wrapper) UnmarshalBinary(data []byte) error {
+	if data == nil {
+		w.Geometry = nil
+		return nil
+	}
+
+	var err error
+	h, byteOrder, offset := readHeader(data)
+	switch h.Type() {
+	case PointType:
+		point := Point{header: h}
+		point.point, _, err = getReadPointFunc(h.wkbType)(data[offset:], byteOrder)
+		w.Geometry = &point
+	case LineType:
+		line := LineString{header: h}
+		line.mp, _, err = readMultiPoint(data[offset:], byteOrder, getReadPointFunc(h.wkbType))
+		w.Geometry = &line
+	case PolygonType:
+		poly := Polygon{header: h}
+		poly.poly, _, err = readPolygon(data[offset:], byteOrder, getReadPointFunc(h.wkbType))
+		w.Geometry = &poly
+	case MultiPointType:
+		mpoint := MultiPoint{header: h}
+		mpoint.mp, _, err = readMultiPoint(data[offset:], byteOrder, getReadPointFunc(h.wkbType))
+		w.Geometry = &mpoint
+	case MultiLineType:
+		mline := MultiLineString{header: h}
+		mline.ml, _, err = readMultiLine(data[offset:], byteOrder, getReadPointFunc(h.wkbType))
+		w.Geometry = &mline
+	case MultiPolygonType:
+		mpoly := MultiPolygon{header: h}
+		mpoly.mp, _, err = readMultiPolygon(data[offset:], byteOrder, getReadPointFunc(h.wkbType))
+		w.Geometry = &mpoly
+	case CollectionType:
+		gc := GeometryCollection{header: h}
+		gc.geoms, _, err = readCollection(data[offset:], byteOrder)
+		w.Geometry = &gc
+	default:
+		err = errors.New("not expected geometry type")
+	}
+	if err != nil {
+		w.Geometry = nil
+	}
+
+	return err
 }
 
 type bbox struct {

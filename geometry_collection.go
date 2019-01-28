@@ -68,52 +68,12 @@ func (c *GeometryCollection) UnmarshalBinary(data []byte) error {
 		return errors.New("not expected geometry type")
 	}
 
-	c.header = h
-
-	length := byteOrder.Uint32(data[offset:])
-	offset += 4
-
-	geoms := make([]Geometry, length)
-	var n int
-	var err error
-	for idx := 0; idx < len(geoms); idx++ {
-		h1, byteOrder1, offset1 := readHeader(data[offset:])
-		offset += offset1
-		switch h1.Type() {
-		case PointType:
-			point := Point{header: h1}
-			point.point, n, err = getReadPointFunc(h1.wkbType)(data[offset:], byteOrder1)
-			geoms[idx] = &point
-		case LineType:
-			line := LineString{header: h1}
-			line.mp, n, err = readMultiPoint(data[offset:], byteOrder1, getReadPointFunc(h1.wkbType))
-			geoms[idx] = &line
-		case PolygonType:
-			poly := Polygon{header: h1}
-			poly.poly, n, err = readPolygon(data[offset:], byteOrder1, getReadPointFunc(h1.wkbType))
-			geoms[idx] = &poly
-		case MultiPointType:
-			mpoint := MultiPoint{header: h1}
-			mpoint.mp, n, err = readMultiPoint(data[offset:], byteOrder1, getReadPointFunc(h1.wkbType))
-			geoms[idx] = &mpoint
-		case MultiLineType:
-			mline := MultiLineString{header: h1}
-			mline.ml, n, err = readMultiLine(data[offset:], byteOrder1, getReadPointFunc(h1.wkbType))
-			geoms[idx] = &mline
-		case MultiPolygonType:
-			mpoly := MultiPolygon{header: h1}
-			mpoly.mp, n, err = readMultiPolygon(data[offset:], byteOrder1, getReadPointFunc(h1.wkbType))
-			geoms[idx] = &mpoly
-		default:
-			return errors.New("not expected geometry type")
-		}
-
-		if err != nil {
-			return err
-		}
-		offset += n
+	geoms, _, err := readCollection(data[offset:], byteOrder)
+	if err != nil {
+		return err
 	}
 
+	c.header = h
 	c.geoms = geoms
 
 	return nil
