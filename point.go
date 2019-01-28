@@ -39,7 +39,7 @@ func (p *Point) String() string {
 		s += "M"
 	}
 
-	return s + "(" + printPoint(p, p.HasZ(), p.HasM()) + ")"
+	return s + printPoint(p, p.HasZ(), p.HasM(), true)
 }
 
 // Scan implements sql.Scanner interface
@@ -66,7 +66,7 @@ func (p *Point) UnmarshalBinary(data []byte) error {
 	return err
 }
 
-func printPoint(p geo.Point, hasZ, hasM bool) string {
+func printPoint(p geo.Point, hasZ, hasM bool, brackets bool) string {
 	if math.IsNaN(p.X()) || math.IsNaN(p.Y()) ||
 		math.IsNaN(p.Z()) || math.IsNaN(p.M()) {
 		return " EMPTY"
@@ -82,5 +82,8 @@ func printPoint(p geo.Point, hasZ, hasM bool) string {
 		s += " " + strconv.FormatFloat(p.M(), 'f', -1, 64)
 	}
 
+	if brackets {
+		return "(" + s + ")"
+	}
 	return s
 }

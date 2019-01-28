@@ -65,7 +65,7 @@ func printMultiPoint(p geo.MultiPoint, hasZ, hasM bool) string {
 
 	var s string
 	for idx := 0; idx < p.Len(); idx++ {
-		s += printPoint(p.Point(idx), hasZ, hasM) + ","
+		s += printPoint(p.Point(idx), hasZ, hasM, false) + ","
 	}
 
 	return "(" + s[:len(s)-1] + ")"
