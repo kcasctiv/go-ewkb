@@ -36,12 +36,10 @@ const (
 	CollectionType
 )
 
-// Geometry presents interface of geometry object
-type Geometry interface {
+// Base presents interface of base of geometry
+type Base interface {
 	// ByteOrder returns byte order of geometry
 	ByteOrder() byte
-	// Type returns type of geometry
-	Type() uint32
 	// HasZ checks if geometry has Z dimension
 	HasZ() bool
 	// HasM checks if geometry has M dimension
@@ -52,12 +50,28 @@ type Geometry interface {
 	HasBBOX() bool
 	// SRID returns SRID, or zero, if there is no SRID
 	SRID() int32
+}
+
+// Geometry presents interface of geometry object
+type Geometry interface {
+	// Type returns type of geometry
+	Type() uint32
+	Base
 	fmt.Stringer
 	sql.Scanner
 	driver.Valuer
 	encoding.BinaryUnmarshaler
 	// TODO: implement these interfaces
 	//encoding.BinaryMarshaler
+}
+
+// NewBase returns new base of geometry
+func NewBase(byteOrder byte, hasZ, hasM, hasSRID, hasBBOX bool, srid int32) Base {
+	return &header{
+		byteOrder: byteOrder,
+		wkbType:   getFlags(hasZ, hasM, hasSRID, hasBBOX),
+		srid:      srid,
+	}
 }
 
 // Wrapper prensents wrapper for geometry objects.
@@ -218,4 +232,25 @@ func scanGeometry(src interface{}, unmarshaler encoding.BinaryUnmarshaler) error
 	}
 
 	return unmarshaler.UnmarshalBinary(data)
+}
+
+func getFlags(z, m, srid, bbox bool) uint32 {
+	var flags uint32
+	if z {
+		flags = flags | zFlag
+	}
+
+	if m {
+		flags = flags | mFlag
+	}
+
+	if srid {
+		flags = flags | sridFlag
+	}
+
+	if bbox {
+		flags = flags | bboxFlag
+	}
+
+	return flags
 }

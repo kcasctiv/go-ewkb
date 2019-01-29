@@ -16,6 +16,20 @@ type Point struct {
 	point geo.Point
 }
 
+// NewPoint returns new point,
+// created from geometry base and coords data
+func NewPoint(b Base, p geo.Point) Point {
+	wkbType := getFlags(b.HasZ(), b.HasM(), b.HasSRID(), b.HasBBOX()) | PointType
+	return Point{
+		header: header{
+			byteOrder: b.ByteOrder(),
+			wkbType:   wkbType,
+			srid:      b.SRID(),
+		},
+		point: p,
+	}
+}
+
 // X returns value of X dimension
 func (p *Point) X() float64 { return p.point.X() }
 
