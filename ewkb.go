@@ -50,6 +50,8 @@ type Geometry interface {
 	HasSRID() bool
 	// HasBBOX checks if geometry contains BBOX
 	HasBBOX() bool
+	// SRID returns SRID, or zero, if there is no SRID
+	SRID() int32
 	fmt.Stringer
 	sql.Scanner
 	driver.Valuer
@@ -165,6 +167,9 @@ func (h *header) HasSRID() bool { return (h.wkbType & sridFlag) == sridFlag }
 
 // HasBBOX checks if geometry contains BBOX
 func (h *header) HasBBOX() bool { return (h.wkbType & bboxFlag) == bboxFlag }
+
+// SRID returns SRID, or zero, if there is no SRID
+func (h *header) SRID() int32 { return h.srid }
 
 func readHeader(data []byte) (header, binary.ByteOrder, int) {
 	var byteOrder binary.ByteOrder
