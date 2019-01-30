@@ -14,6 +14,25 @@ type LineString struct {
 	mp geo.MultiPoint
 }
 
+// NewLineString returns new LineString,
+// created from geometry base and coords data
+func NewLineString(b Base, mp geo.MultiPoint) LineString {
+	wkbType := getFlags(
+		b.HasZ(),
+		b.HasM(),
+		b.HasSRID(),
+		b.HasBBOX(),
+	) | LineType
+	return LineString{
+		header: header{
+			byteOrder: b.ByteOrder(),
+			wkbType:   wkbType,
+			srid:      b.SRID(),
+		},
+		mp: mp,
+	}
+}
+
 // Point returns point of LineString with specified index
 func (l *LineString) Point(idx int) geo.Point { return l.mp.Point(idx) }
 

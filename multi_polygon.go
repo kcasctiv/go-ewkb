@@ -14,6 +14,25 @@ type MultiPolygon struct {
 	mp geo.MultiPolygon
 }
 
+// NewMultiPolygon returns new MultiPolygon,
+// created from geometry base and coords data
+func NewMultiPolygon(b Base, mp geo.MultiPolygon) MultiPolygon {
+	wkbType := getFlags(
+		b.HasZ(),
+		b.HasM(),
+		b.HasSRID(),
+		b.HasBBOX(),
+	) | MultiPolygonType
+	return MultiPolygon{
+		header: header{
+			byteOrder: b.ByteOrder(),
+			wkbType:   wkbType,
+			srid:      b.SRID(),
+		},
+		mp: mp,
+	}
+}
+
 // Polygon returns polygon with specified index
 func (p *MultiPolygon) Polygon(idx int) geo.Polygon { return p.mp.Polygon(idx) }
 

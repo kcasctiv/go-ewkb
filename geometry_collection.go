@@ -13,6 +13,25 @@ type GeometryCollection struct {
 	geoms []Geometry
 }
 
+// NewGeometryCollection returns new GeometryCollection,
+// created from geometry base and coords data
+func NewGeometryCollection(b Base, geoms []Geometry) GeometryCollection {
+	wkbType := getFlags(
+		b.HasZ(),
+		b.HasM(),
+		b.HasSRID(),
+		b.HasBBOX(),
+	) | CollectionType
+	return GeometryCollection{
+		header: header{
+			byteOrder: b.ByteOrder(),
+			wkbType:   wkbType,
+			srid:      b.SRID(),
+		},
+		geoms: geoms,
+	}
+}
+
 // Geometry returns geometry with specified index
 func (c *GeometryCollection) Geometry(idx int) Geometry { return c.geoms[idx] }
 

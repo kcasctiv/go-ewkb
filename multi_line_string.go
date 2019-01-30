@@ -14,6 +14,25 @@ type MultiLineString struct {
 	ml geo.MultiLine
 }
 
+// NewMultiLineString returns new MultiLineString,
+// created from geometry base and coords data
+func NewMultiLineString(b Base, ml geo.MultiLine) MultiLineString {
+	wkbType := getFlags(
+		b.HasZ(),
+		b.HasM(),
+		b.HasSRID(),
+		b.HasBBOX(),
+	) | MultiLineType
+	return MultiLineString{
+		header: header{
+			byteOrder: b.ByteOrder(),
+			wkbType:   wkbType,
+			srid:      b.SRID(),
+		},
+		ml: ml,
+	}
+}
+
 // Line returns line with specified index
 func (l *MultiLineString) Line(idx int) geo.MultiPoint { return l.ml.Line(idx) }
 

@@ -14,6 +14,25 @@ type Polygon struct {
 	poly geo.Polygon
 }
 
+// NewPolygon returns new Polygon,
+// created from geometry base and coords data
+func NewPolygon(b Base, poly geo.Polygon) Polygon {
+	wkbType := getFlags(
+		b.HasZ(),
+		b.HasM(),
+		b.HasSRID(),
+		b.HasBBOX(),
+	) | PolygonType
+	return Polygon{
+		header: header{
+			byteOrder: b.ByteOrder(),
+			wkbType:   wkbType,
+			srid:      b.SRID(),
+		},
+		poly: poly,
+	}
+}
+
 // Ring returns ring with specified index
 func (p *Polygon) Ring(idx int) geo.MultiPoint { return p.poly.Ring(idx) }
 
