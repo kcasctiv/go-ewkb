@@ -17,17 +17,15 @@ type Polygon struct {
 // NewPolygon returns new Polygon,
 // created from geometry base and coords data
 func NewPolygon(b Base, poly geo.Polygon) Polygon {
-	wkbType := getFlags(
-		b.HasZ(),
-		b.HasM(),
-		b.HasSRID(),
-		b.HasBBOX(),
-	) | PolygonType
 	return Polygon{
 		header: header{
 			byteOrder: b.ByteOrder(),
-			wkbType:   wkbType,
-			srid:      b.SRID(),
+			wkbType: getFlags(
+				b.HasZ(),
+				b.HasM(),
+				b.HasSRID(),
+			) | PolygonType,
+			srid: b.SRID(),
 		},
 		poly: poly,
 	}

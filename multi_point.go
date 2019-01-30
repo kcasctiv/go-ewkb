@@ -17,17 +17,15 @@ type MultiPoint struct {
 // NewMultiPoint returns new MultiPoint,
 // created from geometry base and coords data
 func NewMultiPoint(b Base, mp geo.MultiPoint) MultiPoint {
-	wkbType := getFlags(
-		b.HasZ(),
-		b.HasM(),
-		b.HasSRID(),
-		b.HasBBOX(),
-	) | MultiPointType
 	return MultiPoint{
 		header: header{
 			byteOrder: b.ByteOrder(),
-			wkbType:   wkbType,
-			srid:      b.SRID(),
+			wkbType: getFlags(
+				b.HasZ(),
+				b.HasM(),
+				b.HasSRID(),
+			) | MultiPointType,
+			srid: b.SRID(),
 		},
 		mp: mp,
 	}

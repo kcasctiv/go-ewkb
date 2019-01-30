@@ -19,17 +19,15 @@ type Point struct {
 // NewPoint returns new point,
 // created from geometry base and coords data
 func NewPoint(b Base, p geo.Point) Point {
-	wkbType := getFlags(
-		b.HasZ(),
-		b.HasM(),
-		b.HasSRID(),
-		b.HasBBOX(),
-	) | PointType
 	return Point{
 		header: header{
 			byteOrder: b.ByteOrder(),
-			wkbType:   wkbType,
-			srid:      b.SRID(),
+			wkbType: getFlags(
+				b.HasZ(),
+				b.HasM(),
+				b.HasSRID(),
+			) | PointType,
+			srid: b.SRID(),
 		},
 		point: p,
 	}
@@ -85,7 +83,7 @@ func (p *Point) UnmarshalBinary(data []byte) error {
 	return err
 }
 
-func printPoint(p geo.Point, hasZ, hasM bool, brackets bool) string {
+func printPoint(p geo.Point, hasZ, hasM, brackets bool) string {
 	if math.IsNaN(p.X()) || math.IsNaN(p.Y()) ||
 		math.IsNaN(p.Z()) || math.IsNaN(p.M()) {
 		return " EMPTY"

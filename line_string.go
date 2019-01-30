@@ -17,17 +17,15 @@ type LineString struct {
 // NewLineString returns new LineString,
 // created from geometry base and coords data
 func NewLineString(b Base, mp geo.MultiPoint) LineString {
-	wkbType := getFlags(
-		b.HasZ(),
-		b.HasM(),
-		b.HasSRID(),
-		b.HasBBOX(),
-	) | LineType
 	return LineString{
 		header: header{
 			byteOrder: b.ByteOrder(),
-			wkbType:   wkbType,
-			srid:      b.SRID(),
+			wkbType: getFlags(
+				b.HasZ(),
+				b.HasM(),
+				b.HasSRID(),
+			) | LineType,
+			srid: b.SRID(),
 		},
 		mp: mp,
 	}

@@ -16,17 +16,15 @@ type GeometryCollection struct {
 // NewGeometryCollection returns new GeometryCollection,
 // created from geometry base and coords data
 func NewGeometryCollection(b Base, geoms []Geometry) GeometryCollection {
-	wkbType := getFlags(
-		b.HasZ(),
-		b.HasM(),
-		b.HasSRID(),
-		b.HasBBOX(),
-	) | CollectionType
 	return GeometryCollection{
 		header: header{
 			byteOrder: b.ByteOrder(),
-			wkbType:   wkbType,
-			srid:      b.SRID(),
+			wkbType: getFlags(
+				b.HasZ(),
+				b.HasM(),
+				b.HasSRID(),
+			) | CollectionType,
+			srid: b.SRID(),
 		},
 		geoms: geoms,
 	}

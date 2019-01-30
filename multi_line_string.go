@@ -17,17 +17,15 @@ type MultiLineString struct {
 // NewMultiLineString returns new MultiLineString,
 // created from geometry base and coords data
 func NewMultiLineString(b Base, ml geo.MultiLine) MultiLineString {
-	wkbType := getFlags(
-		b.HasZ(),
-		b.HasM(),
-		b.HasSRID(),
-		b.HasBBOX(),
-	) | MultiLineType
 	return MultiLineString{
 		header: header{
 			byteOrder: b.ByteOrder(),
-			wkbType:   wkbType,
-			srid:      b.SRID(),
+			wkbType: getFlags(
+				b.HasZ(),
+				b.HasM(),
+				b.HasSRID(),
+			) | MultiLineType,
+			srid: b.SRID(),
 		},
 		ml: ml,
 	}

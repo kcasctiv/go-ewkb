@@ -22,7 +22,6 @@ const (
 	zFlag    uint32 = 0x80000000 // Z dimension flag
 	mFlag    uint32 = 0x40000000 // M dimension flag
 	sridFlag uint32 = 0x20000000 // SRID flag
-	bboxFlag uint32 = 0x10000000 // BBOX flag
 )
 
 // Available types of geometry objects
@@ -46,8 +45,6 @@ type Base interface {
 	HasM() bool
 	// HasSRID checks if geometry contains SRID
 	HasSRID() bool
-	// HasBBOX checks if geometry contains BBOX
-	HasBBOX() bool
 	// SRID returns SRID, or zero, if there is no SRID
 	SRID() int32
 }
@@ -66,10 +63,10 @@ type Geometry interface {
 }
 
 // NewBase returns new base of geometry
-func NewBase(byteOrder byte, hasZ, hasM, hasSRID, hasBBOX bool, srid int32) Base {
+func NewBase(byteOrder byte, hasZ, hasM, hasSRID bool, srid int32) Base {
 	return &header{
 		byteOrder: byteOrder,
-		wkbType:   getFlags(hasZ, hasM, hasSRID, hasBBOX),
+		wkbType:   getFlags(hasZ, hasM, hasSRID),
 		srid:      srid,
 	}
 }
@@ -150,18 +147,10 @@ func (w *Wrapper) UnmarshalBinary(data []byte) error {
 	return err
 }
 
-type bbox struct {
-	xmin, xmax float64
-	ymin, ymax float64
-	zmin, zmax float64
-	mmin, mmax float64
-}
-
 type header struct {
 	byteOrder byte
 	wkbType   uint32
 	srid      int32
-	bbox      *bbox
 }
 
 // ByteOrder returns byte order of geometry
@@ -178,9 +167,6 @@ func (h *header) HasM() bool { return (h.wkbType & mFlag) == mFlag }
 
 // HasSRID checks if geometry contains SRID
 func (h *header) HasSRID() bool { return (h.wkbType & sridFlag) == sridFlag }
-
-// HasBBOX checks if geometry contains BBOX
-func (h *header) HasBBOX() bool { return (h.wkbType & bboxFlag) == bboxFlag }
 
 // SRID returns SRID, or zero, if there is no SRID
 func (h *header) SRID() int32 { return h.srid }
@@ -203,10 +189,6 @@ func readHeader(data []byte) (header, binary.ByteOrder, int) {
 	if (wkbType & sridFlag) == sridFlag {
 		h.srid = int32(byteOrder.Uint32(data[offset:]))
 		offset += 4
-	}
-
-	if (wkbType & bboxFlag) == bboxFlag {
-		// TODO:
 	}
 
 	return h, byteOrder, offset
@@ -234,7 +216,7 @@ func scanGeometry(src interface{}, unmarshaler encoding.BinaryUnmarshaler) error
 	return unmarshaler.UnmarshalBinary(data)
 }
 
-func getFlags(z, m, srid, bbox bool) uint32 {
+func getFlags(z, m, srid bool) uint32 {
 	var flags uint32
 	if z {
 		flags = flags | zFlag
@@ -246,10 +228,6 @@ func getFlags(z, m, srid, bbox bool) uint32 {
 
 	if srid {
 		flags = flags | sridFlag
-	}
-
-	if bbox {
-		flags = flags | bboxFlag
 	}
 
 	return flags

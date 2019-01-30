@@ -17,17 +17,15 @@ type MultiPolygon struct {
 // NewMultiPolygon returns new MultiPolygon,
 // created from geometry base and coords data
 func NewMultiPolygon(b Base, mp geo.MultiPolygon) MultiPolygon {
-	wkbType := getFlags(
-		b.HasZ(),
-		b.HasM(),
-		b.HasSRID(),
-		b.HasBBOX(),
-	) | MultiPolygonType
 	return MultiPolygon{
 		header: header{
 			byteOrder: b.ByteOrder(),
-			wkbType:   wkbType,
-			srid:      b.SRID(),
+			wkbType: getFlags(
+				b.HasZ(),
+				b.HasM(),
+				b.HasSRID(),
+			) | MultiPolygonType,
+			srid: b.SRID(),
 		},
 		mp: mp,
 	}
