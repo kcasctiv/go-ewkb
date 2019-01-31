@@ -92,3 +92,15 @@ func (l *MultiLineString) UnmarshalBinary(data []byte) error {
 	)
 	return err
 }
+
+// MarshalBinary implements encoding.BinaryMarshaler interface
+func (l *MultiLineString) MarshalBinary() ([]byte, error) {
+	size := headerSize(l.HasSRID()) + multiLineSize(l, l.HasZ(), l.HasM())
+	b := make([]byte, size)
+
+	byteOrder := getBinaryByteOrder(l.ByteOrder())
+	offset := writeHeader(l, byteOrder, l.HasSRID(), b)
+	writeMultiLine(l, byteOrder, l.HasZ(), l.HasM(), b[offset:])
+
+	return b, nil
+}

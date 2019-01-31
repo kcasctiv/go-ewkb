@@ -2,6 +2,7 @@ package ewkb
 
 import (
 	"encoding/binary"
+	"math"
 
 	"github.com/kcasctiv/go-ewkb/geo"
 )
@@ -81,19 +82,19 @@ func collectionSize(geoms []Geometry, hasZ, hasM bool) int {
 }
 
 func writeHeader(
-	h header,
+	g Geometry,
 	byteOrder binary.ByteOrder,
 	hasSRID bool,
 	b []byte,
 ) int {
-	b[0] = h.byteOrder
-	byteOrder.PutUint32(b[1:], h.wkbType)
+	b[0] = g.ByteOrder()
+	byteOrder.PutUint32(b[1:], g.Type()|getFlags(g.HasZ(), g.HasM(), hasSRID))
 
 	if !hasSRID {
 		return 5
 	}
 
-	byteOrder.PutUint32(b[5:], uint32(h.srid))
+	byteOrder.PutUint32(b[5:], uint32(g.SRID()))
 
 	return 9
 }
@@ -104,19 +105,19 @@ func writePoint(
 	hasZ, hasM bool,
 	b []byte,
 ) int {
-	byteOrder.PutUint64(b, uint64(p.X()))
+	byteOrder.PutUint64(b, math.Float64bits(p.X()))
 	offset := 8
 
-	byteOrder.PutUint64(b[offset:], uint64(p.Y()))
+	byteOrder.PutUint64(b[offset:], math.Float64bits(p.Y()))
 	offset += 8
 
 	if hasZ {
-		byteOrder.PutUint64(b[offset:], uint64(p.Z()))
+		byteOrder.PutUint64(b[offset:], math.Float64bits(p.Z()))
 		offset += 8
 	}
 
 	if hasM {
-		byteOrder.PutUint64(b[offset:], uint64(p.M()))
+		byteOrder.PutUint64(b[offset:], math.Float64bits(p.M()))
 		offset += 8
 	}
 
@@ -197,6 +198,7 @@ func writeCollection(
 	offset := 4
 
 	for _, geom := range geoms {
+		offset += writeHeader(geom, byteOrder, false, b[offset:])
 		switch g := geom.(type) {
 		case *Point:
 			offset += writePoint(g, byteOrder, hasZ, hasM, b[offset:])

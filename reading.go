@@ -8,6 +8,24 @@ import (
 	"github.com/kcasctiv/go-ewkb/geo"
 )
 
+func readHeader(data []byte) (header, binary.ByteOrder, int) {
+	byteOrder := getBinaryByteOrder(data[0])
+	offset := 1
+
+	wkbType := byteOrder.Uint32(data[offset:])
+	var h header
+	h.byteOrder = data[0]
+	h.wkbType = wkbType
+	offset += 4
+
+	if (wkbType & sridFlag) == sridFlag {
+		h.srid = int32(byteOrder.Uint32(data[offset:]))
+		offset += 4
+	}
+
+	return h, byteOrder, offset
+}
+
 type readPointFunc func(b []byte, byteOrder binary.ByteOrder) (geo.Point, int, error)
 
 func getReadPointFunc(wkbType uint32) readPointFunc {

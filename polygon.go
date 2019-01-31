@@ -75,6 +75,18 @@ func (p *Polygon) UnmarshalBinary(data []byte) error {
 	return err
 }
 
+// MarshalBinary implements encoding.BinaryMarshaler interface
+func (p *Polygon) MarshalBinary() ([]byte, error) {
+	size := headerSize(p.HasSRID()) + polygonSize(p, p.HasZ(), p.HasM())
+	b := make([]byte, size)
+
+	byteOrder := getBinaryByteOrder(p.ByteOrder())
+	offset := writeHeader(p, byteOrder, p.HasSRID(), b)
+	writePolygon(p, byteOrder, p.HasZ(), p.HasM(), b[offset:])
+
+	return b, nil
+}
+
 func printPolygon(p geo.Polygon, hasZ, hasM bool) string {
 	if p.Len() == 0 {
 		return " EMPTY"

@@ -58,8 +58,7 @@ type Geometry interface {
 	sql.Scanner
 	driver.Valuer
 	encoding.BinaryUnmarshaler
-	// TODO: implement these interfaces
-	//encoding.BinaryMarshaler
+	encoding.BinaryMarshaler
 }
 
 // NewBase returns new base of geometry
@@ -147,6 +146,15 @@ func (w *Wrapper) UnmarshalBinary(data []byte) error {
 	return err
 }
 
+// MarshalBinary implements encoding.BinaryMarshaler interface
+func (w *Wrapper) MarshalBinary() ([]byte, error) {
+	if w.Geometry == nil {
+		return nil, nil
+	}
+
+	return w.Geometry.MarshalBinary()
+}
+
 type header struct {
 	byteOrder byte
 	wkbType   uint32
@@ -170,29 +178,6 @@ func (h *header) HasSRID() bool { return (h.wkbType & sridFlag) == sridFlag }
 
 // SRID returns SRID, or zero, if there is no SRID
 func (h *header) SRID() int32 { return h.srid }
-
-func readHeader(data []byte) (header, binary.ByteOrder, int) {
-	var byteOrder binary.ByteOrder
-	if data[0] == XDR {
-		byteOrder = binary.BigEndian
-	} else {
-		byteOrder = binary.LittleEndian
-	}
-
-	offset := 1
-	wkbType := byteOrder.Uint32(data[offset:])
-	var h header
-	h.byteOrder = data[0]
-	h.wkbType = wkbType
-	offset += 4
-
-	if (wkbType & sridFlag) == sridFlag {
-		h.srid = int32(byteOrder.Uint32(data[offset:]))
-		offset += 4
-	}
-
-	return h, byteOrder, offset
-}
 
 func scanGeometry(src interface{}, unmarshaler encoding.BinaryUnmarshaler) error {
 	var data []byte
@@ -231,4 +216,12 @@ func getFlags(z, m, srid bool) uint32 {
 	}
 
 	return flags
+}
+
+func getBinaryByteOrder(b byte) binary.ByteOrder {
+	if b == XDR {
+		return binary.BigEndian
+	}
+
+	return binary.LittleEndian
 }

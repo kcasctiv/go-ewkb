@@ -95,3 +95,15 @@ func (c *GeometryCollection) UnmarshalBinary(data []byte) error {
 
 	return nil
 }
+
+// MarshalBinary implements encoding.BinaryMarshaler interface
+func (c *GeometryCollection) MarshalBinary() ([]byte, error) {
+	size := headerSize(c.HasSRID()) + collectionSize(c.geoms, c.HasZ(), c.HasM())
+	b := make([]byte, size)
+
+	byteOrder := getBinaryByteOrder(c.ByteOrder())
+	offset := writeHeader(c, byteOrder, c.HasSRID(), b)
+	writeCollection(c.geoms, byteOrder, c.HasZ(), c.HasM(), b[offset:])
+
+	return b, nil
+}

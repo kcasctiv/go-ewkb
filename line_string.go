@@ -74,3 +74,15 @@ func (l *LineString) UnmarshalBinary(data []byte) error {
 	l.mp, _, err = readMultiPoint(data[offset:], byteOrder, getReadPointFunc(h.wkbType))
 	return err
 }
+
+// MarshalBinary implements encoding.BinaryMarshaler interface
+func (l *LineString) MarshalBinary() ([]byte, error) {
+	size := headerSize(l.HasSRID()) + multiPointSize(l, l.HasZ(), l.HasM())
+	b := make([]byte, size)
+
+	byteOrder := getBinaryByteOrder(l.ByteOrder())
+	offset := writeHeader(l, byteOrder, l.HasSRID(), b)
+	writeMultiPoint(l, byteOrder, l.HasZ(), l.HasM(), b[offset:])
+
+	return b, nil
+}

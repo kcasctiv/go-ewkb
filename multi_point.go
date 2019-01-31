@@ -75,6 +75,18 @@ func (p *MultiPoint) UnmarshalBinary(data []byte) error {
 	return err
 }
 
+// MarshalBinary implements encoding.BinaryMarshaler interface
+func (p *MultiPoint) MarshalBinary() ([]byte, error) {
+	size := headerSize(p.HasSRID()) + multiPointSize(p, p.HasZ(), p.HasM())
+	b := make([]byte, size)
+
+	byteOrder := getBinaryByteOrder(p.ByteOrder())
+	offset := writeHeader(p, byteOrder, p.HasSRID(), b)
+	writeMultiPoint(p, byteOrder, p.HasZ(), p.HasM(), b[offset:])
+
+	return b, nil
+}
+
 func printMultiPoint(p geo.MultiPoint, hasZ, hasM bool) string {
 	if p.Len() == 0 {
 		return " EMPTY"

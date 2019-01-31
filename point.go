@@ -83,6 +83,18 @@ func (p *Point) UnmarshalBinary(data []byte) error {
 	return err
 }
 
+// MarshalBinary implements encoding.BinaryMarshaler interface
+func (p *Point) MarshalBinary() ([]byte, error) {
+	size := headerSize(p.HasSRID()) + pointSize(p.HasZ(), p.HasM())
+	b := make([]byte, size)
+
+	byteOrder := getBinaryByteOrder(p.ByteOrder())
+	offset := writeHeader(p, byteOrder, p.HasSRID(), b)
+	writePoint(p, byteOrder, p.HasZ(), p.HasM(), b[offset:])
+
+	return b, nil
+}
+
 func printPoint(p geo.Point, hasZ, hasM, brackets bool) string {
 	if math.IsNaN(p.X()) || math.IsNaN(p.Y()) ||
 		math.IsNaN(p.Z()) || math.IsNaN(p.M()) {
