@@ -1,7 +1,9 @@
 package ewkb
 
 import (
+	"math"
 	"testing"
+	"time"
 
 	"github.com/kcasctiv/go-ewkb/geo"
 )
@@ -211,6 +213,165 @@ func TestPoint_UnmarshalBinary(t *testing.T) {
 
 			if m := p.M(); m != c.expected.M() {
 				t.Errorf("M: expected %v, got %v\n", c.expected.M(), m)
+			}
+		})
+	}
+}
+
+func TestPoint_Scan(t *testing.T) {
+	cases := []struct {
+		name     string
+		src      interface{}
+		valid    bool
+		expected Point
+	}{
+		{
+			"binary",
+			[]byte{1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 28, 64, 0, 0, 0, 0, 0, 0, 32, 64},
+			true,
+			NewPoint(NewBase(NDR, false, false, false, 0), geo.NewPoint(7, 8)),
+		},
+		{
+			"hex binary",
+			[]byte{
+				48, 49, 48, 49, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48,
+				48, 48, 48, 48, 48, 48, 48, 48, 49, 99, 52, 48, 48, 48,
+				48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 50, 48, 52, 48,
+			},
+			true,
+			NewPoint(NewBase(NDR, false, false, false, 0), geo.NewPoint(7, 8)),
+		},
+		{
+			"hex string",
+			"01010000000000000000001c400000000000002040",
+			true,
+			NewPoint(NewBase(NDR, false, false, false, 0), geo.NewPoint(7, 8)),
+		},
+		{
+			"not valid hex string",
+			"01010000000000000000001g400000000000002040",
+			false,
+			Point{},
+		},
+		{
+			"not valid hex binary",
+			[]byte{
+				48, 49, 48, 49, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48,
+				48, 48, 48, 48, 48, 48, 48, 48, 49, 99, 52, 48, 48, 48,
+				48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 50, 148, 52, 48,
+			},
+			false,
+			Point{},
+		},
+		{
+			"not valid data type",
+			time.Now(),
+			false,
+			Point{},
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			var p Point
+			err := p.Scan(c.src)
+			if err != nil && c.valid {
+				t.Fatalf("Expected: no errors, got error: %v\n", err)
+			}
+			if err == nil && !c.valid {
+				t.Fatal("Expected: error, got: no errors\n")
+			}
+			if !c.valid {
+				return
+			}
+
+			if typ := p.Type(); typ != PointType {
+				t.Errorf("Type: expected %v, got %v\n", PointType, typ)
+			}
+
+			if byteOrder := p.ByteOrder(); byteOrder != c.expected.ByteOrder() {
+				t.Errorf("ByteOrder: expected %v, got %v\n", c.expected.ByteOrder(), byteOrder)
+			}
+
+			if hasZ := p.HasZ(); hasZ != c.expected.HasZ() {
+				t.Errorf("HasZ: expected %v, got %v\n", c.expected.HasZ(), hasZ)
+			}
+
+			if hasM := p.HasM(); hasM != c.expected.HasM() {
+				t.Errorf("HasM: expected %v, got %v\n", c.expected.HasM(), hasM)
+			}
+
+			if hasSRID := p.HasSRID(); hasSRID != c.expected.HasSRID() {
+				t.Errorf("HasSRID: expected %v, got %v\n", c.expected.HasSRID(), hasSRID)
+			}
+
+			if srid := p.SRID(); srid != c.expected.SRID() {
+				t.Errorf("SRID: expected %v, got %v\n", c.expected.SRID(), srid)
+			}
+
+			if x := p.X(); x != c.expected.X() {
+				t.Errorf("X: expected %v, got %v\n", c.expected.X(), x)
+			}
+
+			if y := p.Y(); y != c.expected.Y() {
+				t.Errorf("Y: expected %v, got %v\n", c.expected.Y(), y)
+			}
+
+			if z := p.Z(); z != c.expected.Z() {
+				t.Errorf("Z: expected %v, got %v\n", c.expected.Z(), z)
+			}
+
+			if m := p.M(); m != c.expected.M() {
+				t.Errorf("M: expected %v, got %v\n", c.expected.M(), m)
+			}
+		})
+	}
+}
+
+func TestPoint_String(t *testing.T) {
+	cases := []struct {
+		name     string
+		point    Point
+		expected string
+	}{
+		{
+			"simple",
+			NewPoint(NewBase(NDR, false, false, false, 0), geo.NewPoint(6, 5)),
+			"POINT(6 5)",
+		},
+		{
+			"with Z dimension",
+			NewPoint(NewBase(NDR, true, false, false, 0), geo.NewPointZ(6, 5, 4)),
+			"POINT(6 5 4)",
+		},
+		{
+			"with M dimension",
+			NewPoint(NewBase(NDR, false, true, false, 0), geo.NewPointM(6, 5, 4)),
+			"POINTM(6 5 4)",
+		},
+		{
+			"with Z and M dimensions",
+			NewPoint(NewBase(NDR, true, true, false, 0), geo.NewPointZM(6, 5, 4, 3)),
+			"POINT(6 5 4 3)",
+		},
+		{
+			"with SRID",
+			NewPoint(NewBase(NDR, false, false, true, 4321), geo.NewPoint(6, 5)),
+			"SRID=4321;POINT(6 5)",
+		},
+		{
+			"empty",
+			NewPoint(NewBase(NDR, false, false, false, 0), geo.NewPoint(math.NaN(), math.NaN())),
+			"POINT EMPTY",
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			s := c.point.String()
+
+			if s != c.expected {
+				t.Errorf("Expected %q, got %q\n", c.expected, s)
 			}
 		})
 	}
