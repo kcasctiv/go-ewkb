@@ -1,6 +1,7 @@
 package ewkb
 
 import (
+	"bytes"
 	"math"
 	"testing"
 	"time"
@@ -372,6 +373,118 @@ func TestPoint_String(t *testing.T) {
 
 			if s != c.expected {
 				t.Errorf("Expected %q, got %q\n", c.expected, s)
+			}
+		})
+	}
+}
+
+func TestPoint_Value(t *testing.T) {
+	cases := []struct {
+		name     string
+		point    Point
+		expected string
+	}{
+		{
+			"simple",
+			NewPoint(NewBase(NDR, false, false, false, 0), geo.NewPoint(6, 5)),
+			"POINT(6 5)",
+		},
+		{
+			"with Z dimension",
+			NewPoint(NewBase(NDR, true, false, false, 0), geo.NewPointZ(6, 5, 4)),
+			"POINT(6 5 4)",
+		},
+		{
+			"with M dimension",
+			NewPoint(NewBase(NDR, false, true, false, 0), geo.NewPointM(6, 5, 4)),
+			"POINTM(6 5 4)",
+		},
+		{
+			"with Z and M dimensions",
+			NewPoint(NewBase(NDR, true, true, false, 0), geo.NewPointZM(6, 5, 4, 3)),
+			"POINT(6 5 4 3)",
+		},
+		{
+			"with SRID",
+			NewPoint(NewBase(NDR, false, false, true, 4321), geo.NewPoint(6, 5)),
+			"SRID=4321;POINT(6 5)",
+		},
+		{
+			"empty",
+			NewPoint(NewBase(NDR, false, false, false, 0), geo.NewPoint(math.NaN(), math.NaN())),
+			"POINT EMPTY",
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			s, err := c.point.Value()
+			if err != nil {
+				t.Fatalf("Expected not errors, got %v\n", err)
+			}
+
+			if s != c.expected {
+				t.Errorf("Expected %q, got %q\n", c.expected, s)
+			}
+		})
+	}
+}
+
+func TestPoint_MarshalBinary(t *testing.T) {
+	cases := []struct {
+		name     string
+		data     Point
+		expected []byte
+	}{
+		{
+			"simple",
+			NewPoint(NewBase(NDR, false, false, false, 0), geo.NewPoint(7, 8)),
+			[]byte{1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 28, 64, 0, 0, 0, 0, 0, 0, 32, 64},
+		},
+		{
+			"with Z dimension",
+			NewPoint(NewBase(NDR, true, false, false, 0), geo.NewPointZ(-44.3, 60.1, 43.25)),
+			[]byte{
+				1, 1, 0, 0, 128, 102, 102, 102, 102, 102, 38, 70, 192,
+				205, 204, 204, 204, 204, 12, 78, 64, 0, 0, 0, 0, 0, 160, 69, 64,
+			},
+		},
+		{
+			"with M dimension",
+			NewPoint(NewBase(NDR, false, true, false, 0), geo.NewPointM(7, 8, 9)),
+			[]byte{
+				1, 1, 0, 0, 64, 0, 0, 0, 0, 0, 0, 28, 64, 0,
+				0, 0, 0, 0, 0, 32, 64, 0, 0, 0, 0, 0, 0, 34, 64,
+			},
+		},
+		{
+			"with Z and M dimension",
+			NewPoint(NewBase(NDR, true, true, false, 0), geo.NewPointZM(1, 2, 3, 4)),
+			[]byte{
+				1, 1, 0, 0, 192, 0, 0, 0, 0, 0, 0, 240,
+				63, 0, 0, 0, 0, 0, 0, 0, 64, 0, 0, 0, 0,
+				0, 0, 8, 64, 0, 0, 0, 0, 0, 0, 16, 64,
+			},
+		},
+		{
+			"with SRID",
+			NewPoint(NewBase(NDR, false, false, true, 4326), geo.NewPoint(-44.3, 60.1)),
+			[]byte{
+				1, 1, 0, 0, 32, 230, 16, 0, 0, 102, 102, 102, 102,
+				102, 38, 70, 192, 205, 204, 204, 204, 204, 12, 78, 64,
+			},
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			b, err := c.data.MarshalBinary()
+			if err != nil {
+				t.Fatalf("Expected not errors, got %v\n", err)
+			}
+
+			if !bytes.Equal(b, c.expected) {
+				t.Errorf("Expected %v, got %v\n", c.expected, b)
 			}
 		})
 	}
