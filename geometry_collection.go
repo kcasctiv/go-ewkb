@@ -102,7 +102,7 @@ func (c *GeometryCollection) MarshalBinary() ([]byte, error) {
 	b := make([]byte, size)
 
 	byteOrder := getBinaryByteOrder(c.ByteOrder())
-	offset := writeHeader(c, byteOrder, c.HasSRID(), b)
+	offset := writeHeader(c, c.Type(), byteOrder, c.HasSRID(), b)
 	writeCollection(c.geoms, byteOrder, c.HasZ(), c.HasM(), b[offset:])
 
 	return b, nil

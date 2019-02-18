@@ -99,7 +99,7 @@ func (l *MultiLineString) MarshalBinary() ([]byte, error) {
 	b := make([]byte, size)
 
 	byteOrder := getBinaryByteOrder(l.ByteOrder())
-	offset := writeHeader(l, byteOrder, l.HasSRID(), b)
+	offset := writeHeader(l, l.Type(), byteOrder, l.HasSRID(), b)
 	writeMultiLine(l, byteOrder, l.HasZ(), l.HasM(), b[offset:])
 
 	return b, nil

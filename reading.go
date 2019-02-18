@@ -132,8 +132,9 @@ func readPolygon(b []byte, byteOrder binary.ByteOrder,
 	return geo.NewPolygon(rings), offset, nil
 }
 
-func readMultiLine(b []byte, byteOrder binary.ByteOrder,
-	readFunc readPointFunc) (geo.MultiLine, int, error) {
+func readMultiLine(
+	b []byte, byteOrder binary.ByteOrder, readFunc readPointFunc,
+) (geo.MultiLine, int, error) {
 	if len(b) < 4 {
 		return nil, 0, errors.New("out of range")
 	}
@@ -142,9 +143,19 @@ func readMultiLine(b []byte, byteOrder binary.ByteOrder,
 	lines := make([]geo.MultiPoint, plen)
 	var err error
 	var n int
+	var h header
+	var bo binary.ByteOrder
 	offset := 4
 	for idx := 0; idx < plen; idx++ {
-		lines[idx], n, err = readMultiPoint(b[offset:], byteOrder, readFunc)
+		h, bo, n = readHeader(b[offset:])
+		if h.Type() != LineType {
+			return nil, 0, errors.New("not expected geometry type")
+		}
+		offset += n
+		lines[idx], n, err = readMultiPoint(
+			b[offset:], bo,
+			getReadPointFunc(h.wkbType),
+		)
 		if err != nil {
 			return nil, 0, err
 		}

@@ -53,7 +53,7 @@ func multiPolygonSize(mp geo.MultiPolygon, hasZ, hasM bool) int {
 func multiLineSize(ml geo.MultiLine, hasZ, hasM bool) int {
 	size := 4
 	for idx := 0; idx < ml.Len(); idx++ {
-		size += multiPointSize(ml.Line(idx), hasZ, hasM)
+		size += 5 + multiPointSize(ml.Line(idx), hasZ, hasM)
 	}
 
 	return size
@@ -82,19 +82,20 @@ func collectionSize(geoms []Geometry, hasZ, hasM bool) int {
 }
 
 func writeHeader(
-	g Geometry,
+	base Base,
+	typ uint32,
 	byteOrder binary.ByteOrder,
 	hasSRID bool,
 	b []byte,
 ) int {
-	b[0] = g.ByteOrder()
-	byteOrder.PutUint32(b[1:], g.Type()|getFlags(g.HasZ(), g.HasM(), hasSRID))
+	b[0] = base.ByteOrder()
+	byteOrder.PutUint32(b[1:], typ|getFlags(base.HasZ(), base.HasM(), hasSRID))
 
 	if !hasSRID {
 		return 5
 	}
 
-	byteOrder.PutUint32(b[5:], uint32(g.SRID()))
+	byteOrder.PutUint32(b[5:], uint32(base.SRID()))
 
 	return 9
 }
@@ -173,7 +174,7 @@ func writeMultiPolygon(
 }
 
 func writeMultiLine(
-	l geo.MultiLine,
+	l *MultiLineString,
 	byteOrder binary.ByteOrder,
 	hasZ, hasM bool,
 	b []byte,
@@ -182,6 +183,7 @@ func writeMultiLine(
 	offset := 4
 
 	for idx := 0; idx < l.Len(); idx++ {
+		offset += writeHeader(l, LineType, byteOrder, false, b[offset:])
 		offset += writeMultiPoint(l.Line(idx), byteOrder, hasZ, hasM, b[offset:])
 	}
 
@@ -198,7 +200,7 @@ func writeCollection(
 	offset := 4
 
 	for _, geom := range geoms {
-		offset += writeHeader(geom, byteOrder, false, b[offset:])
+		offset += writeHeader(geom, geom.Type(), byteOrder, false, b[offset:])
 		switch g := geom.(type) {
 		case *Point:
 			offset += writePoint(g, byteOrder, hasZ, hasM, b[offset:])

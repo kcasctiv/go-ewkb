@@ -89,7 +89,7 @@ func (p *Point) MarshalBinary() ([]byte, error) {
 	b := make([]byte, size)
 
 	byteOrder := getBinaryByteOrder(p.ByteOrder())
-	offset := writeHeader(p, byteOrder, p.HasSRID(), b)
+	offset := writeHeader(p, p.Type(), byteOrder, p.HasSRID(), b)
 	writePoint(p, byteOrder, p.HasZ(), p.HasM(), b[offset:])
 
 	return b, nil
