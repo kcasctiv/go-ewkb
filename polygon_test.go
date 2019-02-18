@@ -142,7 +142,7 @@ func TestNewPolygon(t *testing.T) {
 	}
 }
 
-func TestNewPolygon_UnmarshalBinary(t *testing.T) {
+func TestPolygon_UnmarshalBinary(t *testing.T) {
 	cases := []struct {
 		name     string
 		data     []byte
